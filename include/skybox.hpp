@@ -8,7 +8,7 @@
 class Skybox {
 public:
     Skybox();
-    Skybox(const std::vector<std::string>& faces, GLuint shader);
+    Skybox(const std::string &directory, GLuint shader);
     ~Skybox();
     bool render(const glm::mat4& view, const glm::mat4& projection) const;
 

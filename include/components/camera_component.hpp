@@ -29,8 +29,6 @@ public:
 
     ClearFlags clear_flags;
     Skybox skybox;
-    GLuint skybox_texture;
-    GLuint skybox_shader;
     glm::vec4 background; // RGBA
     uint32_t culling_mask;
     Projection projection;
@@ -93,10 +91,6 @@ public:
     }
 
     void update(GameObject& gameObject) override {
-        if (InputState::is_key_pressed(GLFW_KEY_G)) {
-            background = glm::vec4(0.5, 1.0, 0.6, 1.0);
-        } else {
-            background = glm::vec4(0.5, 0.6, 1.0, 1.0);
-        }
+        
     }
 };

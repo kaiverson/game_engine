@@ -12,8 +12,8 @@ struct Material {
     sampler2D base_map;
     sampler2D metallic_map;
     sampler2D normal_map;
-    sampler2D height_map;
-    sampler2D occlusion_map;
+    // sampler2D height_map;
+    // sampler2D occlusion_map;
     float smoothness;
 };
 

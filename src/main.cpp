@@ -6,14 +6,16 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <thread>
+#include <chrono>
 
 #include "object_loader.hpp"
-// #include "texture_loader.hpp"
 #include "utils.hpp"
 #include "shader_utils.hpp"
 #include "callbacks.hpp"
 #include "render.hpp"
 #include "game_object.hpp"
+#include "game_object_builder.hpp"
 #include "components/transform_component.hpp"
 #include "components/material_component.hpp"
 #include "components/render_mesh_component.hpp"
@@ -28,15 +30,12 @@
 
 bool wireframe_mode = false;
 bool debug_mode = false;
-bool move_forward = false;
-bool move_backward = false;
-bool move_left = false;
-bool move_right = false;
-bool move_up = false;
-bool move_down = false;
 
 GLuint SCREEN_WIDTH = 1000;
 GLuint SCREEN_HEIGHT = 800;
+
+const int TARGET_FPS = 120;
+const double FRAME_DURATION = 1.0 / TARGET_FPS;
 
 std::shared_ptr<GameObject> camera_object;
 
@@ -48,7 +47,6 @@ int main() {
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     
     GLFWwindow *window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "GAME", nullptr, nullptr);
     if (!window) {
@@ -77,71 +75,53 @@ int main() {
     // Create Scene
     Scene main_scene;
 
-    auto game_object = main_scene.create_game_object("Block");
-    ObjModel obj_model;
-    if (!load_obj("src/objects/plane.obj", obj_model)) {
-        std::cerr << "FAILED TO LOAD OBJECT\n";
-    }
-    MaterialProperties material_properties;
-    material_properties.smoothness = 0.5f;
-    auto materialComponent = std::make_shared<MaterialComponent>(material_properties);
-    materialComponent->set_texture(materialComponent->material.base_map, "src/objects/dragon/Material_baseColor.png");
-    // materialComponent->set_texture(materialComponent->material.metallic_map, "src/objects/dragon/Material_baseColor.png");
-    materialComponent->set_texture(materialComponent->material.normal_map, "src/objects/dragon/Material_normal.png");
-    // materialComponent->set_texture(materialComponent->material.occlusion_map, "src/objects/dragon/Material_baseColor.png");
-    game_object->add_component(materialComponent);
-    auto renderMeshComponent = std::make_shared<RenderMeshComponent>(obj_model);
-    game_object->add_component(renderMeshComponent);
-    game_object->get_component<TransformComponent>()->scale = glm::vec3(3.0, 3.0, 3.0);
-    game_object->get_component<TransformComponent>()->rotation = glm::quat(glm::vec3(-1.57, 0, 0));
-    auto changeColorScript = std::make_shared<ChangeColorScript>();
-    game_object->add_component(changeColorScript);
-
-    // Create Camera GameObject
-    std::vector<std::string> skybox_faces = {
-        "src/objects/dragon/stone_bricks.png",
-        "src/objects/dragon/stone_bricks.png",
-        "src/objects/dragon/stone_bricks.png",
-        "src/objects/dragon/stone_bricks.png",
-        "src/objects/dragon/stone_bricks.png",
-        "src/objects/dragon/stone_bricks.png"
-    };
-
-    GLuint skybox_shader;
-    if (!load_shader("src/shaders/skybox/skybox_vertex_shader.glsl", "src/shaders/skybox/skybox_fragment_shader.glsl", skybox_shader)) {
-        std::cerr << "Failed to load skybox shaders\n";
-        return -1;
-    }
-    Skybox skybox = Skybox(skybox_faces, skybox_shader);
-
-    camera_object = main_scene.create_game_object("Camera");
-    auto camera_component = std::make_shared<CameraComponent>(CameraComponent::ClearFlags::SolidColor, skybox);
-    auto camera_transform = camera_object->get_component<TransformComponent>();
-    camera_transform->position = glm::vec3(0.0f, 2.0f, 10.0f);
-    camera_object->add_component(camera_component);
-    camera_object->add_component(std::make_shared<CameraMovementScript>());
-
     // Load shaders
     GLuint shaderProgram;
     if (!load_shader("src/shaders/utah/vertex_shader.glsl", "src/shaders/utah/fragment_shader.glsl", shaderProgram)) {
         std::cerr << "Failed to load shaders\n";
         return -1;
     }
+
+    auto ground = main_scene.create_game_object("Ground")
+        .with_render_mesh("src/objects/plane.obj")
+        .with_material()
+            .set_shader(shaderProgram)
+            .with_texture("src/textures/ground.jpg")
+            // .with_texture("src/textures/ground.jpg", TextureType::Normal)
+        .with_transform(glm::vec3(0), glm::vec3(3.0f))
+        .build();
     
+    auto teapot = main_scene.create_game_object("Trees")
+        .with_render_mesh("src/objects/UTAH_BLEND.obj")
+        .with_material()
+            .set_shader(shaderProgram)
+            .with_texture("src/objects/dragon/Material_baseColor.png")
+            .with_texture("src/objects/dragon/Material_normal.png", TextureType::Normal)
+        .build();
 
-    ShaderUniformLocations uniform_locations = get_uniform_locations(shaderProgram);
 
+    GLuint skybox_shader;
+    if (!load_shader("src/shaders/skybox/skybox_vertex_shader.glsl", "src/shaders/skybox/skybox_fragment_shader.glsl", skybox_shader)) {
+        std::cerr << "Failed to load skybox shaders\n";
+        return -1;
+    }
+    auto camera_object = main_scene.create_game_object("Camera")
+        .with_camera()
+            .with_background(glm::vec4(1.0, 1.0, 0, 1.0))
+        .with_transform(glm::vec3(0.0, 2.0, 10.0))
+        .with_script(std::make_shared<CameraMovementScript>())
+        .build();
+
+    auto camera_transform = camera_object->get_component<TransformComponent>();
+    auto camera_component = camera_object->get_component<CameraComponent>();
+
+        
     // Set light properties
     LightProperties light_properties;
     light_properties.direction = glm::vec3(1.2f, -15.0f, 2.0f);
     light_properties.ambient = glm::vec3(0.2f, 0.2f, 0.2f);
     light_properties.diffuse = glm::vec3(0.5f, 0.5f, 0.5f);
     light_properties.specular = glm::vec3(1.0f, 1.0f, 1.0f);
-
-    RenderData render_data;
-    render_data.shader_program = shaderProgram;
-    render_data.game_objects.push_back(game_object);
-    render_data.game_objects.push_back(camera_object);
 
     double current_time = 0.0;
     double previous_time = 0.0;
@@ -165,9 +145,13 @@ int main() {
 
         camera_component->clear(view, projection);
 
-        render_scene(render_data, uniform_locations, projection, view, camera_transform->position, light_properties);
+        render_scene(main_scene, projection, view, camera_transform->position, light_properties);
 
         main_scene.update();
+
+        InputState::update_previous_key_state();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
 
         if (debug_mode) {
             frame_count++;
@@ -179,9 +163,11 @@ int main() {
             }
         }
 
-        InputState::update_previous_key_state();
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        double frame_end_time = glfwGetTime();
+        double frame_time = frame_end_time - current_time;
+        if (frame_time < FRAME_DURATION) {
+            std::this_thread::sleep_for(std::chrono::duration<double>(FRAME_DURATION - frame_time));
+        }
     }
 
     glfwDestroyWindow(window);

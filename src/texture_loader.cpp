@@ -48,28 +48,53 @@ GLuint load_texture(const std::string& path) {
 }
 
 GLuint load_cubemap(const std::vector<std::string>& faces) {
+    if (faces.size() != 6) {
+        std::cerr << "Cubemap requires exactly 6 faces. Got: " << faces.size() << "\n";
+        return 0;
+    }
+
     GLuint textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
 
     int width, height, nrChannels;
-    for (unsigned int i = 0; i < faces.size(); i++) {
+    bool success = true;
+
+    for (unsigned int i = 0; i < 6; i++) {
         unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
-        if (data) {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
-            );
+        
+        if (!data) {
+            std::cerr << "Cubemap failed to load: " << faces[i] << "\n";
+            success = false;
             stbi_image_free(data);
-        } else {
-            std::cerr << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
-            stbi_image_free(data);
+            break;
         }
+
+        GLenum format = GL_RGB;
+        if (nrChannels == 4) format = GL_RGBA;
+        else if (nrChannels == 1) format = GL_RED;
+
+        glTexImage2D(
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+            0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data
+        );
+        stbi_image_free(data);
     }
+
+    if (!success) {
+        glDeleteTextures(1, &textureID);
+        return 0;
+    }
+
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
     return textureID;
 }

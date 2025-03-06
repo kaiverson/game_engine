@@ -8,8 +8,6 @@
 
 extern std::shared_ptr<GameObject> camera_object;
 
-bool cursor_disconnected = false;
-
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
@@ -42,8 +40,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 
     // FREE CURSOR
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS && !cursor_disconnected) {
-        cursor_disconnected = true;
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS && !InputState::cursor_disconnected) {
+        InputState::cursor_disconnected = true;
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
 
@@ -63,8 +61,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     InputState::update_mouse_button_state(window, button, action, mods);
     
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && cursor_disconnected) {
-        cursor_disconnected = false;
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && InputState::cursor_disconnected) {
+        InputState::cursor_disconnected = false;
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 }

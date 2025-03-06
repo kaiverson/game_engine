@@ -1,8 +1,11 @@
 #include "skybox.hpp"
 
-Skybox::Skybox() {}
+Skybox::Skybox() 
+    : VAO(0), VBO(0), texture(0), shader(0), loaded(false)
+{}
 
-Skybox::Skybox(const std::vector<std::string>& faces, GLuint shader) {
+Skybox::Skybox(const std::string& directory, GLuint shader) 
+        : shader(shader) {
     float skyboxVertices[] = {
         // positions          
         -1.0f,  1.0f, -1.0f,
@@ -50,6 +53,12 @@ Skybox::Skybox(const std::vector<std::string>& faces, GLuint shader) {
 
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
+
+    if (VAO == 0 || VBO == 0) {
+        std::cerr << "Skybox: Failed to generate OpenGL objects\n";
+        return;
+    }
+
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
@@ -57,34 +66,39 @@ Skybox::Skybox(const std::vector<std::string>& faces, GLuint shader) {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glBindVertexArray(0);
 
+    std::vector<std::string> faces = {
+        directory + "/right.png",
+        directory + "/left.png",
+        directory + "/top.png",
+        directory + "/bottom.png",
+        directory + "/front.png",
+        directory + "/back.png"
+    };
+
     texture = load_cubemap(faces);
 
     view_uniform_loc = glGetUniformLocation(shader, "view");
-    if (view_uniform_loc == -1) {
-        std::cerr << "Could not find skybox uniform location for: view\n"; 
-    }
     projection_uniform_loc = glGetUniformLocation(shader, "projection");
-    if (view_uniform_loc == -1) {
-        std::cerr << "Could not find skybox uniform location for: projection\n"; 
-    }
     skybox_uniform_loc = glGetUniformLocation(shader, "skybox");
-    if (skybox_uniform_loc == -1) {
-        std::cerr << "Could not find skybox uniform location for: skybox\n"; 
+
+    if(view_uniform_loc == -1 || projection_uniform_loc == -1 || skybox_uniform_loc == -1) {
+        std::cerr << "Skybox: Failed to find one or more uniform locations\n";
+        return;
     }
 
     loaded = true;
 }
 
 Skybox::~Skybox() {
+    if (!loaded) return;
+
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteTextures(1, &texture);
 }
 
 bool Skybox::render(const glm::mat4& view, const glm::mat4& projection) const {
-    if (!loaded) {
-        return false;
-    }
+    if (!loaded || shader == 0) return false;
 
     glDepthFunc(GL_LEQUAL);
     glUseProgram(shader);
@@ -100,6 +114,8 @@ bool Skybox::render(const glm::mat4& view, const glm::mat4& projection) const {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
     glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Clearnup
     glBindVertexArray(0);
     glDepthFunc(GL_LESS);
 

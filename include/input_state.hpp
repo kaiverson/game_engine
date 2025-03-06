@@ -25,6 +25,7 @@ public:
     static KeyState key_state;
     static MouseButtonState mouse_button_state;
     static double delta_time;
+    static bool cursor_disconnected;
 
     static void update_mouse_position(GLFWwindow* window, double xpos, double ypos) {
         mouse_state.xpos = xpos;

@@ -13,17 +13,13 @@
 #include "structs.hpp"
 #include "shader_utils.hpp"
 #include "game_object.hpp"
+#include "scene.hpp"
 #include "components/transform_component.hpp"
 #include "components/material_component.hpp"
 #include "components/render_mesh_component.hpp"
 
-struct RenderData {
-    GLuint shader_program;
-    std::vector<std::shared_ptr<GameObject>> game_objects;
-};
-
 bool load_shader(const std::string& vertex_path, const std::string& fragment_path, GLuint& shader_program);
-void render_scene(RenderData& render_data, const ShaderUniformLocations& uniform_locations, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& camera_position, const LightProperties& light_properties);
+void render_scene(const Scene scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& camera_position, const LightProperties& light_properties);
 void draw_normals(const std::shared_ptr<RenderMeshComponent>& render_mesh, const glm::mat4& model, const glm::mat4& projection, const glm::mat4& view);
 GLuint create_normal_shader_program();
 

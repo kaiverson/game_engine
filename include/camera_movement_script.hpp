@@ -73,6 +73,10 @@ public:
             transform->position += camera_speed * glm::vec3(0.0f, -1.0f, 0.0f) * delta_time;
         }
 
+
+        // If cursor is disconnected, don't look around
+        if (InputState::cursor_disconnected) return;
+
         // Handles mouse input for looking around
         float xoffset = InputState::mouse_state.xpos - xpos_previous;
         float yoffset = ypos_previous - InputState::mouse_state.ypos;

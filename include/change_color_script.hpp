@@ -20,10 +20,16 @@ public:
 
     void update(GameObject &game_object) override {
         if (InputState::is_key_pressed(GLFW_KEY_PERIOD)) {
-            material_component->material.smoothness += 5.0 * InputState::delta_time;
+            material_component->material.base_color.x += 0.1 * InputState::delta_time;
+            if (material_component->material.base_color.x >= 1.0) {
+                material_component->material.base_color.x = 1.0;
+            }
         }
         if (InputState::is_key_pressed(GLFW_KEY_COMMA)) {
-            material_component->material.smoothness -= 5.0 * InputState::delta_time;
+            material_component->material.base_color.x -= 0.1 * InputState::delta_time;
+            if (material_component->material.base_color.x <= 0) {
+                material_component->material.base_color.x = 0;
+            }
         }
     }
 };
