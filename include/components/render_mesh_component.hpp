@@ -5,137 +5,25 @@
 #include "object_loader.hpp"
 #include <glad/glad.h>
 #include <vector>
-#include <stdexcept>
-#include <iostream>
+#include <limits>
 #include <unordered_map>
+#include <functional>
 
 class RenderMeshComponent : public Component {
 public:
-    GLuint VAO;
-    GLuint VBO;
-    GLuint EBO;
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
+    GLuint VAO = 0;
+    GLuint VBO = 0;
+    GLuint EBO = 0;
+    glm::vec3 aabb_min;
+    glm::vec3 aabb_max;
+    size_t index_count = 0;
 
-    RenderMeshComponent(const ObjModel &obj_model) {
-        bool has_normals = !obj_model.normals.empty();
-        bool has_texcoords = !obj_model.texture_coords.empty();
-
-        std::unordered_map<int, glm::vec3> vertex_normals;
-        std::unordered_map<int, glm::vec3> vertex_tangents;
-        std::unordered_map<int, glm::vec3> vertex_bitangents;
-
-        // Initialize vertex_normals, vertex_tangents, and vertex_bitangents with zero vectors
-        for (size_t i = 0; i < obj_model.vertices.size(); ++i) {
-            vertex_normals[i] = glm::vec3(0.0f);
-            vertex_tangents[i] = glm::vec3(0.0f);
-            vertex_bitangents[i] = glm::vec3(0.0f);
-        }
-
-        for (const auto &face : obj_model.faces) {
-            glm::vec3 v0 = obj_model.vertices[face.vertex_index[0]];
-            glm::vec3 v1 = obj_model.vertices[face.vertex_index[1]];
-            glm::vec3 v2 = obj_model.vertices[face.vertex_index[2]];
-
-            glm::vec2 uv0 = obj_model.texture_coords[face.texture_index[0]];
-            glm::vec2 uv1 = obj_model.texture_coords[face.texture_index[1]];
-            glm::vec2 uv2 = obj_model.texture_coords[face.texture_index[2]];
-
-            glm::vec3 edge1 = v1 - v0;
-            glm::vec3 edge2 = v2 - v0;
-
-            glm::vec2 deltaUV1 = uv1 - uv0;
-            glm::vec2 deltaUV2 = uv2 - uv0;
-
-            float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
-            glm::vec3 tangent = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
-            glm::vec3 bitangent = (edge2 * deltaUV1.x - edge1 * deltaUV2.x) * r;
-
-            for (int i = 0; i < 3; ++i) {
-                vertex_normals[face.vertex_index[i]] += glm::normalize(glm::cross(edge1, edge2));
-                vertex_tangents[face.vertex_index[i]] += tangent;
-                vertex_bitangents[face.vertex_index[i]] += bitangent;
-            }
-
-            for (int i = 0; i < 3; ++i) {
-                indices.push_back(indices.size());
-                vertices.push_back(obj_model.vertices[face.vertex_index[i]].x);
-                vertices.push_back(obj_model.vertices[face.vertex_index[i]].y);
-                vertices.push_back(obj_model.vertices[face.vertex_index[i]].z);
-
-                if (has_normals) {
-                    vertices.push_back(obj_model.normals[face.normal_index[i]].x);
-                    vertices.push_back(obj_model.normals[face.normal_index[i]].y);
-                    vertices.push_back(obj_model.normals[face.normal_index[i]].z);
-                } else {
-                    vertices.push_back(vertex_normals[face.vertex_index[i]].x);
-                    vertices.push_back(vertex_normals[face.vertex_index[i]].y);
-                    vertices.push_back(vertex_normals[face.vertex_index[i]].z);
-                }
-
-                if (has_texcoords) {
-                    vertices.push_back(obj_model.texture_coords[face.texture_index[i]].x);
-                    vertices.push_back(obj_model.texture_coords[face.texture_index[i]].y);
-                } else {
-                    vertices.push_back(0.0f);
-                    vertices.push_back(0.0f);
-                }
-
-                vertices.push_back(vertex_tangents[face.vertex_index[i]].x);
-                vertices.push_back(vertex_tangents[face.vertex_index[i]].y);
-                vertices.push_back(vertex_tangents[face.vertex_index[i]].z);
-
-                vertices.push_back(vertex_bitangents[face.vertex_index[i]].x);
-                vertices.push_back(vertex_bitangents[face.vertex_index[i]].y);
-                vertices.push_back(vertex_bitangents[face.vertex_index[i]].z);
-            }
-        }
-
-        // Normalize vertex normals, tangents, and bitangents
-        for (auto &vertex_normal : vertex_normals) {
-            vertex_normal.second = glm::normalize(vertex_normal.second);
-        }
-        for (auto &vertex_tangent : vertex_tangents) {
-            vertex_tangent.second = glm::normalize(vertex_tangent.second);
-        }
-        for (auto &vertex_bitangent : vertex_bitangents) {
-            vertex_bitangent.second = glm::normalize(vertex_bitangent.second);
-        }
-
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-
-        glBindVertexArray(VAO);
-
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-        // Set up position attribute
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-
-        // Set up normal attribute
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-
-        // Set up texture coordinate attribute
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(6 * sizeof(float)));
-        glEnableVertexAttribArray(2);
-
-        // Set up tangent attribute
-        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(8 * sizeof(float)));
-        glEnableVertexAttribArray(3);
-
-        // Set up bitangent attribute
-        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(11 * sizeof(float)));
-        glEnableVertexAttribArray(4);
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+    RenderMeshComponent(const ObjModel &obj_model, bool generate_tangents = true) {
+        compute_aabb(obj_model);
+        process_mesh_data(obj_model, generate_tangents);
+        setup_gl_buffers();
     }
 
     ~RenderMeshComponent() {
@@ -144,12 +32,158 @@ public:
         glDeleteBuffers(1, &EBO);
     }
 
-    void start(GameObject &game_object) override {
-        
+private:
+    struct PackedVertex {
+        int v_idx, vt_idx, vn_idx;
+        bool operator==(const PackedVertex& o) const {
+            return v_idx == o.v_idx && vt_idx == o.vt_idx && vn_idx == o.vn_idx;
+        }
+    };
+
+    struct VertexHasher {
+        size_t operator()(const PackedVertex& k) const {
+            return ((std::hash<int>()(k.v_idx) ^
+                   (std::hash<int>()(k.vt_idx) << 1) >> 1) ^
+                   (std::hash<int>()(k.vn_idx) << 1));
+        }
+    };
+
+    void compute_aabb(const ObjModel &obj_model) {
+        aabb_min = glm::vec3(FLT_MAX);
+        aabb_max = glm::vec3(-FLT_MAX);
+        for (const auto& v : obj_model.vertices) {
+            aabb_min = glm::min(aabb_min, v);
+            aabb_max = glm::max(aabb_max, v);
+        }
     }
 
-    void update(GameObject& gameObject) override {
-        // No update logic needed for the mesh component
+    void process_mesh_data(const ObjModel &obj_model, bool generate_tangents) {
+        std::unordered_map<PackedVertex, unsigned int, VertexHasher> vertex_map;
+        std::vector<glm::vec3> temp_tangents;
+        std::vector<glm::vec3> temp_bitangents;
+
+        // First pass: Process all faces and build unique vertices
+        for (const auto& face : obj_model.faces) {
+            glm::vec3 pos[3];
+            glm::vec2 uv[3];
+            glm::vec3 normal[3];
+
+            // Get vertex data for this face
+            for (int i = 0; i < 3; i++) {
+                pos[i] = obj_model.vertices[face.vertex_index[i]];
+                uv[i] = face.texture_index[i] >= 0 ? 
+                       obj_model.texture_coords[face.texture_index[i]] : glm::vec2(0);
+                normal[i] = face.normal_index[i] >= 0 ? 
+                           obj_model.normals[face.normal_index[i]] : glm::vec3(0);
+            }
+
+            // Generate tangent/bitangent if needed
+            if (generate_tangents && !obj_model.texture_coords.empty()) {
+                glm::vec3 tangent, bitangent;
+                compute_face_tangents(pos, uv, tangent, bitangent);
+                temp_tangents.push_back(tangent);
+                temp_bitangents.push_back(bitangent);
+            }
+
+            // Process each vertex in the face
+            for (int i = 0; i < 3; i++) {
+                PackedVertex packed = {
+                    face.vertex_index[i],
+                    face.texture_index[i],
+                    face.normal_index[i]
+                };
+
+                // Check if we've already seen this vertex
+                auto it = vertex_map.find(packed);
+                if (it != vertex_map.end()) {
+                    indices.push_back(it->second);
+                } else {
+                    // Create new vertex
+                    const unsigned int new_idx = vertices.size() / 14; // 14 floats per vertex
+                    vertex_map[packed] = new_idx;
+                    indices.push_back(new_idx);
+
+                    // Position
+                    vertices.push_back(pos[i].x);
+                    vertices.push_back(pos[i].y);
+                    vertices.push_back(pos[i].z);
+
+                    // Normal
+                    vertices.push_back(normal[i].x);
+                    vertices.push_back(normal[i].y);
+                    vertices.push_back(normal[i].z);
+
+                    // Texture coordinates
+                    vertices.push_back(uv[i].x);
+                    vertices.push_back(uv[i].y);
+
+                    // Tangent/Bitangent (if generated)
+                    if (generate_tangents && !temp_tangents.empty()) {
+                        vertices.push_back(temp_tangents.back().x);
+                        vertices.push_back(temp_tangents.back().y);
+                        vertices.push_back(temp_tangents.back().z);
+                        vertices.push_back(temp_bitangents.back().x);
+                        vertices.push_back(temp_bitangents.back().y);
+                        vertices.push_back(temp_bitangents.back().z);
+                    } else {
+                        // Pad with zeros
+                        vertices.insert(vertices.end(), 6, 0.0f);
+                    }
+                }
+            }
+        }
+        index_count = indices.size();
+    }
+
+    void compute_face_tangents(const glm::vec3 pos[3], const glm::vec2 uv[3], 
+                              glm::vec3& tangent, glm::vec3& bitangent) {
+        glm::vec3 edge1 = pos[1] - pos[0];
+        glm::vec3 edge2 = pos[2] - pos[0];
+        glm::vec2 deltaUV1 = uv[1] - uv[0];
+        glm::vec2 deltaUV2 = uv[2] - uv[0];
+
+        float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+        tangent = f * (deltaUV2.y * edge1 - deltaUV1.y * edge2);
+        bitangent = f * (-deltaUV2.x * edge1 + deltaUV1.x * edge2);
+    }
+
+    void setup_gl_buffers() {
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+
+        glBindVertexArray(VAO);
+        
+        // Vertex Buffer
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+        // Index Buffer
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+        // Vertex Attributes
+        // Position
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)0);
+        
+        // Normal
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(3 * sizeof(float)));
+        
+        // Texture Coordinates
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(6 * sizeof(float)));
+        
+        // Tangent
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(8 * sizeof(float)));
+        
+        // Bitangent
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(11 * sizeof(float)));
+
+        glBindVertexArray(0);
     }
 };
 

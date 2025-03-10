@@ -5,7 +5,7 @@
 #include "components/render_mesh_component.hpp"
 #include "components/camera_component.hpp"
 #include "components/script_component.hpp"
-// #include "scene.hpp"
+
 class Scene;
 
 class GameObjectBuilder {
@@ -20,10 +20,12 @@ public:
 
     GameObjectBuilder &with_transform(
         const glm::vec3 &position = glm::vec3(0.0f),
-        const glm::vec3 &scale = glm::vec3(1.0f))  {
+        const glm::quat &rotation = glm::quat(glm::vec3(0.0f)),
+        const glm::vec3 &scale = glm::vec3(1.0f)) {
 
             auto transform = game_object->get_component<TransformComponent>();
             transform->position = position;
+            transform->rotation = rotation;
             transform->scale = scale;
             return *this;
     }

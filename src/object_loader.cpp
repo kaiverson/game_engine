@@ -1,125 +1,137 @@
-#include "object_loader.hpp"
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <array>
-#include <glm/glm.hpp>
+#include "object_loader.hpp"  
+#include <iostream>  
+#include <fstream>  
+#include <sstream>  
+#include <cmath>  
 
-bool load_obj(const std::string &filename, ObjModel &model) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-        return false;
-    }
+bool load_obj(const std::string &filename, ObjModel &model) {  
+    std::ifstream file(filename);  
+    if (!file.is_open()) {  
+        std::cerr << "Failed to open file: " << filename << std::endl;  
+        return false;  
+    }  
 
-    std::string line;
-    while (std::getline(file, line)) {
-        std::istringstream iss(line);
-        std::string prefix;
-        iss >> prefix;
+    auto resolve_index = [](int idx, size_t size) -> int {  
+        if (idx == 0) return -1;  // OBJ indices are 1-based, 0 is invalid  
+        return (idx < 0) ? static_cast<int>(size) + idx : idx - 1;  
+    };  
 
-        if (prefix == "v") {
-            glm::vec3 vertex;
-            iss >> vertex.x >> vertex.y >> vertex.z;
-            model.vertices.push_back(vertex);
-        } else if (prefix == "vt") {
-            glm::vec2 tex_coord;
-            iss >> tex_coord.x >> tex_coord.y;
-            model.texture_coords.push_back(tex_coord);
-        } else if (prefix == "vn") {
-            glm::vec3 normal;
-            iss >> normal.x >> normal.y >> normal.z;
-            model.normals.push_back(normal);
-        } else if (prefix == "f") {
-            std::vector<int> vertex_indices;
-            std::vector<int> texture_indices;
-            std::vector<int> normal_indices;
-            char slash;
-            std::string vertex_data;
+    std::string line;  
+    while (std::getline(file, line)) {  
+        std::istringstream iss(line);  
+        std::string prefix;  
+        iss >> prefix;  
 
-            while (iss >> vertex_data) {
-                std::istringstream viss(vertex_data);
-                std::string index;
-                int vertex_index = -1, texture_index = -1, normal_index = -1;
+        if (prefix == "v") {  
+            glm::vec3 vertex;  
+            iss >> vertex.x >> vertex.y >> vertex.z;  
+            model.vertices.push_back(vertex);  
+        } else if (prefix == "vt") {  
+            glm::vec2 tex_coord;  
+            iss >> tex_coord.x >> tex_coord.y;  
+            tex_coord.y = 1.0f - tex_coord.y;  // Flip UV Y-axis for OpenGL  
+            model.texture_coords.push_back(tex_coord);  
+        } else if (prefix == "vn") {  
+            glm::vec3 normal;  
+            iss >> normal.x >> normal.y >> normal.z;  
+            model.normals.push_back(normal);  
+        } else if (prefix == "f") {  
+            std::vector<int> vertex_indices, texture_indices, normal_indices;  
+            std::string vertex_data;  
 
-                std::getline(viss, index, '/');
-                if (!index.empty()) vertex_index = std::stoi(index) - 1;
+            while (iss >> vertex_data) {  
+                std::istringstream viss(vertex_data);  
+                std::string part;  
+                int v_idx = -1, vt_idx = -1, vn_idx = -1;  
 
-                if (viss.peek() == '/') viss.ignore();
-                if (viss.peek() != '/') {
-                    std::getline(viss, index, '/');
-                    if (!index.empty()) texture_index = std::stoi(index) - 1;
-                }
+                // Parse vertex index  
+                if (std::getline(viss, part, '/') && !part.empty()) {  
+                    try {  
+                        v_idx = resolve_index(std::stoi(part), model.vertices.size());  
+                    } catch (...) {  
+                        std::cerr << "Invalid vertex index: " << part << std::endl;  
+                        return false;  
+                    }  
+                }  
 
-                if (viss.peek() == '/') viss.ignore();
-                std::getline(viss, index);
-                if (!index.empty()) normal_index = std::stoi(index) - 1;
-                
-                vertex_indices.push_back(vertex_index);
-                texture_indices.push_back(texture_index);
-                normal_indices.push_back(normal_index);
-            }
-            
-            for (size_t i = 1; i < vertex_indices.size() - 1; i++) {
-                Face face;
-                face.vertex_index[0] = vertex_indices[0];
-                face.vertex_index[1] = vertex_indices[i];
-                face.vertex_index[2] = vertex_indices[i + 1];
+                // Parse texture index  
+                if (std::getline(viss, part, '/') && !part.empty()) {  
+                    try {  
+                        vt_idx = resolve_index(std::stoi(part), model.texture_coords.size());  
+                    } catch (...) {  
+                        std::cerr << "Invalid texture index: " << part << std::endl;  
+                        return false;  
+                    }  
+                }  
 
-                face.texture_index[0] = texture_indices[0];
-                face.texture_index[1] = texture_indices[i];
-                face.texture_index[2] = texture_indices[i + 1];
+                // Parse normal index  
+                if (std::getline(viss, part, '/') && !part.empty()) {  
+                    try {  
+                        vn_idx = resolve_index(std::stoi(part), model.normals.size());  
+                    } catch (...) {  
+                        std::cerr << "Invalid normal index: " << part << std::endl;  
+                        return false;  
+                    }  
+                }  
 
-                face.normal_index[0] = normal_indices[0];
-                face.normal_index[1] = normal_indices[i];
-                face.normal_index[2] = normal_indices[i + 1];
+                vertex_indices.push_back(v_idx);  
+                texture_indices.push_back(vt_idx);  
+                normal_indices.push_back(vn_idx);  
+            }  
 
-                model.faces.push_back(face);
-            }
-        }
-    }
+            // Triangulate polygon faces (assumes convex)  
+            for (size_t i = 1; i < vertex_indices.size() - 1; ++i) {  
+                Face face;  
+                face.vertex_index = { vertex_indices[0], vertex_indices[i], vertex_indices[i+1] }; 
+                face.texture_index = { texture_indices[0], texture_indices[i], texture_indices[i+1] };  
+                face.normal_index = { normal_indices[0], normal_indices[i], normal_indices[i+1] };  
+                model.faces.push_back(face);  
+            }  
+        }  
+    }  
 
-    file.close();
+    // Calculate tangents and bitangents (if UVs are present)  
+    model.tangents.resize(model.vertices.size(), glm::vec3(0.0f));  
+    model.bitangents.resize(model.vertices.size(), glm::vec3(0.0f));  
 
-    // Calculate tangents and bitangents
-    model.tangents.resize(model.vertices.size(), glm::vec3(0.0f));
-    model.bitangents.resize(model.vertices.size(), glm::vec3(0.0f));
+    bool has_uvs = !model.texture_coords.empty();  
+    for (const auto &face : model.faces) {  
+        if (!has_uvs || face.texture_index[0] < 0) continue;  
 
-    for (const auto &face : model.faces) {
-        glm::vec3 v0 = model.vertices.at(face.vertex_index[0]);
-        glm::vec3 v1 = model.vertices.at(face.vertex_index[1]);
-        glm::vec3 v2 = model.vertices.at(face.vertex_index[2]);
+        glm::vec3 v0 = model.vertices[face.vertex_index[0]];  
+        glm::vec3 v1 = model.vertices[face.vertex_index[1]];  
+        glm::vec3 v2 = model.vertices[face.vertex_index[2]];  
 
-        if (face.texture_index[0] >= 0 && face.texture_index[1] >= 0 && face.texture_index[2] >= 0) {
-            glm::vec2 uv0 = model.texture_coords[face.texture_index[0]];
-            glm::vec2 uv1 = model.texture_coords[face.texture_index[1]];
-            glm::vec2 uv2 = model.texture_coords[face.texture_index[2]];
+        glm::vec2 uv0 = model.texture_coords[face.texture_index[0]];  
+        glm::vec2 uv1 = model.texture_coords[face.texture_index[1]];  
+        glm::vec2 uv2 = model.texture_coords[face.texture_index[2]];  
 
-            glm::vec3 deltaPos1 = v1 - v0;
-            glm::vec3 deltaPos2 = v2 - v0;
+        glm::vec3 delta_pos1 = v1 - v0;  
+        glm::vec3 delta_pos2 = v2 - v0;  
+        glm::vec2 delta_uv1 = uv1 - uv0;  
+        glm::vec2 delta_uv2 = uv2 - uv0;  
 
-            glm::vec2 deltaUV1 = uv1 - uv0;
-            glm::vec2 deltaUV2 = uv2 - uv0;
+        float denom = delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x;  
+        if (std::abs(denom) < 1e-6f) continue;  // Skip degenerate UVs  
 
-            float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
-            glm::vec3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
-            glm::vec3 bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r;
+        float r = 1.0f / denom;  
+        glm::vec3 tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;  
+        glm::vec3 bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * r;  
 
-            model.tangents[face.vertex_index[0]] += tangent;
-            model.tangents[face.vertex_index[1]] += tangent;
-            model.tangents[face.vertex_index[2]] += tangent;
+        for (int i = 0; i < 3; ++i) {  
+            int idx = face.vertex_index[i];  
+            model.tangents[idx] += tangent;  
+            model.bitangents[idx] += bitangent;  
+        }  
+    }  
 
-            model.bitangents[face.vertex_index[0]] += bitangent;
-            model.bitangents[face.vertex_index[1]] += bitangent;
-            model.bitangents[face.vertex_index[2]] += bitangent;
-        }
-    }
+    // Normalize tangents  
+    for (size_t i = 0; i < model.vertices.size(); ++i) {  
+        if (glm::length(model.tangents[i]) > 0.0f)  
+            model.tangents[i] = glm::normalize(model.tangents[i]);  
+        if (glm::length(model.bitangents[i]) > 0.0f)  
+            model.bitangents[i] = glm::normalize(model.bitangents[i]);  
+    }  
 
-    // Normalize tangents and bitangents
-    for (size_t i = 0; i < model.vertices.size(); ++i) {
-        model.tangents[i] = glm::normalize(model.tangents[i]);
-        model.bitangents[i] = glm::normalize(model.bitangents[i]);
-    }
-
-    return true;
-}
+    return true;  
+}  

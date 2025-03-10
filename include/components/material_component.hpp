@@ -5,6 +5,21 @@
 #include "texture_loader.hpp"
 #include <glm/glm.hpp>
 #include <iostream>
+#include <memory>
+#include <unordered_map>
+
+// class MaterialPreset {
+// public:
+//     virtual ~MaterialPreset() = default;
+//     virtual void bind_uniforms(GLuint shader, const class MaterialComponent &material) const = 0;
+//     virtual std::vector<std::string> get_required_textrues() const = 0;
+//     virtual GLuint get_shader() const = 0;
+// };
+
+// class LitPreset : public MaterialPreset {
+// public:
+//     glm::vec4 base_color = glm::
+// }
 
 enum class TextureType {
     Base,

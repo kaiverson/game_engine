@@ -56,6 +56,7 @@ int main() {
     }
 
     glfwMakeContextCurrent(window);
+    InputState::set_window(window);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD\n";
@@ -70,10 +71,10 @@ int main() {
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetKeyCallback(window, key_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // Create Scene
     Scene main_scene;
+    InputState::set_active_scene(&main_scene);
 
     // Load shaders
     GLuint shaderProgram;
@@ -88,15 +89,20 @@ int main() {
             .set_shader(shaderProgram)
             .with_texture("src/textures/ground.jpg")
             // .with_texture("src/textures/ground.jpg", TextureType::Normal)
-        .with_transform(glm::vec3(0), glm::vec3(3.0f))
+        .with_transform(glm::vec3(0), glm::quat(glm::vec3(0)), glm::vec3(3.0))
         .build();
     
-    auto teapot = main_scene.create_game_object("Trees")
+    auto material = std::make_shared<MaterialProperties>();
+    material->base_color = glm::vec3(1.0f, 1.0f, 1.0f);
+
+    auto tex = main_scene.create_game_object("Teapot")
         .with_render_mesh("src/objects/UTAH_BLEND.obj")
         .with_material()
             .set_shader(shaderProgram)
-            .with_texture("src/objects/dragon/Material_baseColor.png")
-            .with_texture("src/objects/dragon/Material_normal.png", TextureType::Normal)
+            // .with_texture("src/objects/dragon/Material_baseColor.png")
+            // .with_texture("src/objects/dragon/Material_normal.png", TextureType::Normal)
+        // .with_transform(glm::vec3(0, 5, 0), glm::quat(glm::vec3(-1.5707, 0, 0)))
+        .with_script(std::make_shared<ChangeColorScript>())
         .build();
 
 
@@ -107,7 +113,8 @@ int main() {
     }
     auto camera_object = main_scene.create_game_object("Camera")
         .with_camera()
-            .with_background(glm::vec4(1.0, 1.0, 0, 1.0))
+            // .with_background(glm::vec4(1.0, 1.0, 0, 1.0))
+            .with_skybox("src/textures/skybox", skybox_shader)
         .with_transform(glm::vec3(0.0, 2.0, 10.0))
         .with_script(std::make_shared<CameraMovementScript>())
         .build();

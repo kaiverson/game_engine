@@ -5,10 +5,14 @@
 #include "input_state.hpp"
 #include "components/transform_component.hpp"
 #include "components/camera_component.hpp"
+#include "raycasting.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <iostream>
+
+extern GLuint SCREEN_WIDTH;
+extern GLuint SCREEN_HEIGHT;
 
 class CameraMovementScript : public ScriptComponent {
 public:
@@ -18,6 +22,9 @@ public:
     float pitch = 0.0f;
     float xpos_previous = 0.0f;
     float ypos_previous = 0.0f;
+    bool view_mode = false;
+    GLFWwindow *window;
+    Scene *scene;
     std::shared_ptr<TransformComponent> transform;
     std::shared_ptr<CameraComponent> camera;
 
@@ -27,9 +34,37 @@ public:
 
         xpos_previous = InputState::mouse_state.xpos;
         ypos_previous = InputState::mouse_state.ypos;
+
+        window = InputState::window;
+        scene = InputState::active_scene;
     }
 
     void update(GameObject &game_object) override {
+        if (InputState::is_mouse_button_pressed(GLFW_MOUSE_BUTTON_RIGHT) && view_mode == false) {
+            view_mode = true;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            xpos_previous = InputState::mouse_state.xpos;
+            ypos_previous = InputState::mouse_state.ypos;
+        } else if (!InputState::is_mouse_button_pressed(GLFW_MOUSE_BUTTON_RIGHT) && view_mode == true) {
+            view_mode = false;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+
+        if (view_mode == false && InputState::is_mouse_button_just_released(GLFW_MOUSE_BUTTON_LEFT)) {
+            int mouse_x = static_cast<int>(InputState::mouse_state.xpos);
+            int mouse_y = static_cast<int>(InputState::mouse_state.ypos);
+            Ray ray = screen_to_world_ray(mouse_x, mouse_y, SCREEN_WIDTH, SCREEN_HEIGHT, camera->get_view_matrix(transform->position, transform->get_front(), transform->get_up()), camera->get_projection_matrix(static_cast<float>(SCREEN_WIDTH) / SCREEN_HEIGHT));
+            auto selected_object = raycast(ray, scene->get_game_objects());
+
+            if (selected_object) {
+                std::cout << selected_object->name << "\n";
+            } else {
+                std::cout << "Did not hit object\n";
+            }
+        }
+
+
+
 
         if (InputState::is_key_pressed(GLFW_KEY_UP)) {
             camera->field_of_view += 5 * InputState::delta_time;
@@ -73,9 +108,10 @@ public:
             transform->position += camera_speed * glm::vec3(0.0f, -1.0f, 0.0f) * delta_time;
         }
 
-
-        // If cursor is disconnected, don't look around
-        if (InputState::cursor_disconnected) return;
+        // Don't look around if not in view_mode
+        if (!view_mode) {
+            return;
+        }
 
         // Handles mouse input for looking around
         float xoffset = InputState::mouse_state.xpos - xpos_previous;
@@ -84,10 +120,10 @@ public:
         xpos_previous = InputState::mouse_state.xpos;
         ypos_previous = InputState::mouse_state.ypos;
 
-        float offset = sqrtf(xoffset*xoffset + yoffset*yoffset);
-        if (offset  > 150.0) {
-            return;
-        }
+        // float offset = sqrtf(xoffset*xoffset + yoffset*yoffset);
+        // if (offset  > 150.0) {
+        //     return;
+        // }
 
 
         xoffset *= mouse_sensitivity;

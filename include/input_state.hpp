@@ -1,9 +1,12 @@
 #pragma once
 
+// #include "scene.hpp"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <unordered_map>
 #include <iostream>
+
+class Scene;
 
 struct MouseState {
     double xpos = 0.0;
@@ -17,6 +20,7 @@ struct KeyState {
 
 struct MouseButtonState {
     std::unordered_map<int, bool> buttons;
+    std::unordered_map<int, bool> buttons_previous;
 };
 
 class InputState {
@@ -25,7 +29,9 @@ public:
     static KeyState key_state;
     static MouseButtonState mouse_button_state;
     static double delta_time;
-    static bool cursor_disconnected;
+    static GLFWwindow *window;
+    static Scene *active_scene;
+
 
     static void update_mouse_position(GLFWwindow* window, double xpos, double ypos) {
         mouse_state.xpos = xpos;
@@ -60,6 +66,14 @@ public:
         return mouse_button_state.buttons[button];
     }
 
+    static bool is_mouse_button_just_pressed(int button) {
+        return mouse_button_state.buttons[button] && !mouse_button_state.buttons_previous[button];
+    }
+
+    static bool is_mouse_button_just_released(int button) {
+        return !mouse_button_state.buttons[button] && mouse_button_state.buttons_previous[button];
+    }
+
     static void update_previous_key_state() {
         // for (const auto &[key, pressed] : key_state.keys) {
         //     if (key_state.keys_previous[key] != pressed) {
@@ -68,6 +82,15 @@ public:
         // }
 
         key_state.keys_previous = key_state.keys;
+        mouse_button_state.buttons_previous = mouse_button_state.buttons;
+    }
+
+    static void set_window(GLFWwindow *window) {
+        InputState::window = window;
+    }
+
+    static void set_active_scene(Scene *scene) {
+        InputState::active_scene = scene;
     }
 };
 
