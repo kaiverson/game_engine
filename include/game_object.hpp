@@ -42,14 +42,14 @@ class GameObject {
     }
 
     void start() {
-        for (auto &component : components) {
+        for (auto &component : components) {          
             component->start(*this);
         }
     }
 
-    void update() {
+    void update(const float delta_time) {
         for (auto &component : components) {
-            component->update(*this);
+            component->update(*this, delta_time);
         }
     }
 };

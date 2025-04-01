@@ -1,7 +1,7 @@
 #pragma once 
 #include "game_object.hpp"
+#include "material.hpp"
 #include "components/transform_component.hpp"
-#include "components/material_component.hpp"
 #include "components/render_mesh_component.hpp"
 #include "components/camera_component.hpp"
 #include "components/script_component.hpp"
@@ -12,30 +12,31 @@ class GameObjectBuilder {
 private:
     std::shared_ptr<GameObject> game_object;
     Scene &scene;
-    std::shared_ptr<MaterialComponent> current_material;
+    std::shared_ptr<Material> current_material;
 
 public:
     GameObjectBuilder(const std::shared_ptr<GameObject>& game_object, Scene& scene)
     : game_object(game_object), scene(scene) {}
 
-    GameObjectBuilder &with_transform(
-        const glm::vec3 &position = glm::vec3(0.0f),
-        const glm::quat &rotation = glm::quat(glm::vec3(0.0f)),
-        const glm::vec3 &scale = glm::vec3(1.0f)) {
+    GameObjectBuilder &with_transform(const TransformParams &params) {
 
             auto transform = game_object->get_component<TransformComponent>();
-            transform->position = position;
-            transform->rotation = rotation;
-            transform->scale = scale;
+            transform->position = params.position;
+            transform->rotation = params.rotation;
+            transform->scale = params.scale;
             return *this;
     }
 
     GameObjectBuilder &with_render_mesh(const std::string &model_path) {
-        ObjModel model;
-        if (load_obj(model_path, model)) {
-            auto render_component = std::make_shared<RenderMeshComponent>(model);
-            game_object->add_component(render_component);
+        auto mesh = std::make_shared<Mesh>();
+        if (!mesh->load(model_path)) {
+            std::cerr << "GameObject " << game_object->name << ": failed to load mesh at " << model_path << "\n";
+            return *this;
         }
+
+        auto render_component = std::make_shared<RenderMeshComponent>(mesh);
+        game_object->add_component(render_component);
+        
         return *this;
     }
 
@@ -47,42 +48,38 @@ public:
 
     GameObjectBuilder &with_background(const glm::vec4 color) {
         auto camera_component = game_object->get_component<CameraComponent>();
+        if (!camera_component) {
+            std::cerr << "Warning: attempted to change background on " << game_object->name << " which doesn't have a camera component.\n";
+            return *this;
+        }
+
         camera_component->background = color;
         camera_component->clear_flags = CameraComponent::ClearFlags::SolidColor;
         return *this;
     }
 
-    GameObjectBuilder &with_skybox(const std::string &directory, GLuint shader) {
-        auto camera_component = game_object->get_component<CameraComponent>();
-        Skybox skybox = Skybox(directory, shader);
-        camera_component->skybox = skybox;
-        camera_component->clear_flags = CameraComponent::ClearFlags::Skybox;
-        return *this;
-    }
+    // GameObjectBuilder &with_skybox(const std::string &directory) {
+    //     auto camera_component = game_object->get_component<CameraComponent>();
+    //     Skybox skybox = Skybox(directory, shader);
+    //     camera_component->skybox = skybox;
+    //     camera_component->clear_flags = CameraComponent::ClearFlags::Skybox;
+    //     return *this;
+    // }
 
-    GameObjectBuilder &with_material(std::shared_ptr<MaterialComponent> material = nullptr) {
-        if (!material) {
-            material = std::make_shared<MaterialComponent>();
+    GameObjectBuilder &with_material(std::shared_ptr<Material> material, GLuint submesh_index = 0) {
+        auto render_mesh_component = game_object->get_component<RenderMeshComponent>();
+        if (!render_mesh_component) {
+            std::cerr << "GameObject " << game_object->name << ": can't add a material before it has a render mesh component\n";
+            return *this;
         }
-        game_object->add_component(material);
+
+        bool success = render_mesh_component->set_material(submesh_index, material);
+        if (!success) {
+            std::cout << "GameObject " << game_object->name << ": unable to add material at submesh_index " << submesh_index << "\n";
+            return *this;
+        }
+
         current_material = material;
-        return *this;
-    }
-
-    GameObjectBuilder &set_shader(GLuint shader) {
-        if (current_material) {
-            current_material->set_shader(shader);
-        }
-        return *this;
-    }
-
-    GameObjectBuilder &with_texture(
-        const std::string &texture_path, 
-        TextureType type = TextureType::Base
-    ) {
-        if (current_material) {
-            current_material->set_texture(type, texture_path);
-        }
         return *this;
     }
 

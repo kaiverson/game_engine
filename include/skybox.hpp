@@ -3,19 +3,22 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "texture_loader.hpp"
+#include <string>
+#include <iostream>
+#include <shader.hpp>
+#include <texture.hpp>
 
 class Skybox {
 public:
     Skybox();
-    Skybox(const std::string &directory, GLuint shader);
+    Skybox(const std::string &directory, std::shared_ptr<Shader> shader);
     ~Skybox();
     bool render(const glm::mat4& view, const glm::mat4& projection) const;
 
 public:
     GLuint VAO, VBO;
-    GLuint texture;
-    GLuint shader;
+    std::shared_ptr<Texture> texture;
+    std::shared_ptr<Shader> shader;
 
 private:
     bool loaded = false;

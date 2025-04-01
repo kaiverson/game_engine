@@ -5,7 +5,7 @@
 #include "input_state.hpp"
 #include "components/transform_component.hpp"
 #include "components/camera_component.hpp"
-#include "raycasting.hpp"
+// #include "raycasting.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -23,6 +23,10 @@ public:
     float xpos_previous = 0.0f;
     float ypos_previous = 0.0f;
     bool view_mode = false;
+
+    glm::vec3 velocity = glm::vec3(0.0f);
+    float acceleration_rate = camera_speed * 10;
+    float deceleration_rate = camera_speed * 4;
     GLFWwindow *window;
     Scene *scene;
     std::shared_ptr<TransformComponent> transform;
@@ -39,7 +43,7 @@ public:
         scene = InputState::active_scene;
     }
 
-    void update(GameObject &game_object) override {
+    void update(GameObject &game_object, const float delta_time) override {
         if (InputState::is_mouse_button_pressed(GLFW_MOUSE_BUTTON_RIGHT) && view_mode == false) {
             view_mode = true;
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -50,63 +54,93 @@ public:
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
 
-        if (view_mode == false && InputState::is_mouse_button_just_released(GLFW_MOUSE_BUTTON_LEFT)) {
-            int mouse_x = static_cast<int>(InputState::mouse_state.xpos);
-            int mouse_y = static_cast<int>(InputState::mouse_state.ypos);
-            Ray ray = screen_to_world_ray(mouse_x, mouse_y, SCREEN_WIDTH, SCREEN_HEIGHT, camera->get_view_matrix(transform->position, transform->get_front(), transform->get_up()), camera->get_projection_matrix(static_cast<float>(SCREEN_WIDTH) / SCREEN_HEIGHT));
-            auto selected_object = raycast(ray, scene->get_game_objects());
+        // if (view_mode == false && InputState::is_mouse_button_just_released(GLFW_MOUSE_BUTTON_LEFT)) {
+        //     int mouse_x = static_cast<int>(InputState::mouse_state.xpos);
+        //     int mouse_y = static_cast<int>(InputState::mouse_state.ypos);
+        //     Ray ray = screen_to_world_ray(mouse_x, mouse_y, SCREEN_WIDTH, SCREEN_HEIGHT, camera->get_view_matrix(transform->position, transform->get_front(), transform->get_up()), camera->get_projection_matrix(static_cast<float>(SCREEN_WIDTH) / SCREEN_HEIGHT));
+        //     auto selected_object = raycast(ray, scene->get_game_objects());
 
-            if (selected_object) {
-                std::cout << selected_object->name << "\n";
-            } else {
-                std::cout << "Did not hit object\n";
-            }
-        }
+        //     if (selected_object) {
+        //         std::cout << selected_object->name << "\n";
+        //     } else {
+        //         std::cout << "Did not hit object\n";
+        //     }
+        // }
 
 
 
 
         if (InputState::is_key_pressed(GLFW_KEY_UP)) {
-            camera->field_of_view += 5 * InputState::delta_time;
+            camera->field_of_view += 5 * delta_time;
         }
         if (InputState::is_key_pressed(GLFW_KEY_DOWN)) {
-            camera->field_of_view -= 5 * InputState::delta_time;
+            camera->field_of_view -= 5 * delta_time;
         }
 
         if (InputState::is_key_just_pressed(GLFW_KEY_1)) {
             camera->clear_flags = CameraComponent::ClearFlags::Skybox;
+            camera->print_camera_component();
+            std::cout << "\n";
         }
         if (InputState::is_key_just_pressed(GLFW_KEY_2)) {
             camera->clear_flags = CameraComponent::ClearFlags::SolidColor;
+            camera->print_camera_component();
+            std::cout << "\n";
         }
         if (InputState::is_key_just_pressed(GLFW_KEY_3)) {
             camera->clear_flags = CameraComponent::ClearFlags::DepthOnly;
+            camera->print_camera_component();
+            std::cout << "\n";
         }
         if (InputState::is_key_just_pressed(GLFW_KEY_4)) {
             camera->clear_flags = CameraComponent::ClearFlags::Nothing;
+            camera->print_camera_component();
+            std::cout << "\n";
         }
 
-        float delta_time = InputState::delta_time;
+        glm::vec3 direction = glm::vec3(0.0f);
 
-        // Handles keyboard input for movement
+        // Determine movement direction
         if (InputState::is_key_pressed(GLFW_KEY_W)) {
-            transform->position += glm::normalize(transform->get_front() * glm::vec3(1.0, 0.0, 1.0)) * camera_speed * delta_time;
+            direction += glm::normalize(transform->get_front() * glm::vec3(1.0, 0.0, 1.0));
         }
         if (InputState::is_key_pressed(GLFW_KEY_S)) {
-            transform->position -= glm::normalize(transform->get_front() * glm::vec3(1.0, 0.0, 1.0)) * camera_speed * delta_time;
+            direction -= glm::normalize(transform->get_front() * glm::vec3(1.0, 0.0, 1.0)) * camera_speed * delta_time;
         }
         if (InputState::is_key_pressed(GLFW_KEY_A)) {
-            transform->position -= glm::normalize(glm::cross(transform->get_front(), transform->get_up()) * glm::vec3(1.0, 0.0, 1.0)) * camera_speed * delta_time;
+            direction -= glm::normalize(glm::cross(transform->get_front(), transform->get_up()) * glm::vec3(1.0, 0.0, 1.0));
         }
         if (InputState::is_key_pressed(GLFW_KEY_D)) {
-            transform->position += glm::normalize(glm::cross(transform->get_front(), transform->get_up()) * glm::vec3(1.0, 0.0, 1.0)) * camera_speed * delta_time;
+            direction += glm::normalize(glm::cross(transform->get_front(), transform->get_up()) * glm::vec3(1.0, 0.0, 1.0));
         }
         if (InputState::is_key_pressed(GLFW_KEY_SPACE)) {
-            transform->position += camera_speed * glm::vec3(0.0f, 1.0f, 0.0f) * delta_time;
+            direction += glm::vec3(0.0f, 1.0f, 0.0f);
         }
         if (InputState::is_key_pressed(GLFW_KEY_LEFT_SHIFT)) {
-            transform->position += camera_speed * glm::vec3(0.0f, -1.0f, 0.0f) * delta_time;
+            direction+= glm::vec3(0.0f, -1.0f, 0.0f);
         }
+
+        // Apply acceleration or deceleration
+        if (glm::length(direction) > 0.0f) {
+            direction = glm::normalize(direction);
+
+            velocity += direction * acceleration_rate * delta_time;
+            if (glm::length(velocity) > camera_speed) {
+                velocity = glm::normalize(velocity) * camera_speed;
+            }
+        } else {
+            if (glm::length(velocity) > 0.0f) {
+                glm::vec3 deceleration_vector = glm::normalize(velocity) * deceleration_rate * delta_time;
+                if (glm::length(deceleration_vector) > glm::length(velocity)) {
+                    velocity = glm::vec3(0.0f);
+                } else {
+                    velocity -= deceleration_vector;
+                }
+            }
+        }
+
+        transform->position += velocity * delta_time;
+
 
         // Don't look around if not in view_mode
         if (!view_mode) {
@@ -117,8 +151,8 @@ public:
         float xoffset = InputState::mouse_state.xpos - xpos_previous;
         float yoffset = ypos_previous - InputState::mouse_state.ypos;
 
-        xpos_previous = InputState::mouse_state.xpos;
-        ypos_previous = InputState::mouse_state.ypos;
+        xpos_previous = (float)InputState::mouse_state.xpos;
+        ypos_previous = (float)InputState::mouse_state.ypos;
 
         // float offset = sqrtf(xoffset*xoffset + yoffset*yoffset);
         // if (offset  > 150.0) {

@@ -67,6 +67,12 @@
         "unordered_map": "cpp",
         "xhash": "cpp",
         "stop_token": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "map": "cpp",
+        "variant": "cpp",
+        "xtree": "cpp",
+        "mutex": "cpp",
+        "set": "cpp",
+        "unordered_set": "cpp"
     }
 }

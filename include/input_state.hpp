@@ -9,8 +9,8 @@
 class Scene;
 
 struct MouseState {
-    double xpos = 0.0;
-    double ypos = 0.0;
+    float xpos = 0.0;
+    float ypos = 0.0;
 };
 
 struct KeyState {
@@ -28,14 +28,13 @@ public:
     static MouseState mouse_state;
     static KeyState key_state;
     static MouseButtonState mouse_button_state;
-    static double delta_time;
     static GLFWwindow *window;
     static Scene *active_scene;
 
 
     static void update_mouse_position(GLFWwindow* window, double xpos, double ypos) {
-        mouse_state.xpos = xpos;
-        mouse_state.ypos = ypos;
+        mouse_state.xpos = static_cast<float>(xpos);
+        mouse_state.ypos = static_cast<float>(ypos);
     }
 
     static void update_key_state(GLFWwindow* window, int key, int scancode, int action, int mode) {
