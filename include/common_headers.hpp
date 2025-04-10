@@ -12,20 +12,20 @@
 #include <thread>
 #include <chrono>
 
-// #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #include "imgui.h"
-// #include "backends/imgui_i_impl_glfw.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 #include "engine_config.hpp"
 #include "utils.hpp"
 #include "callbacks.hpp"
-#include "render.hpp"
 #include "game_object.hpp"
 #include "game_object_builder.hpp"
 #include "material.hpp"
 #include "material_builder.hpp"
+#include "bounding_box.hpp"
 #include "asset_manager.hpp"
 #include "components/transform_component.hpp"
 #include "components/render_mesh_component.hpp"

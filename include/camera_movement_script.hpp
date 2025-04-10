@@ -68,7 +68,29 @@ public:
         // }
 
 
+        if (InputState::is_key_just_pressed(GLFW_KEY_F)) {
+            // get camera position
+            glm::vec3 camera_position = transform->position;
+            
+            // get selected object (as determined by inspector)
+            std::shared_ptr<GameObject> selected_game_object;
 
+            // glm::vec3 selected_game_object_position = selected_game_object->get_component<TransformComponent>()->position;
+            glm::vec3 selected_game_object_position = glm::vec3(0.0f);
+
+            glm::vec3 look_direction = camera_position - selected_game_object_position;
+
+            glm::normalize(look_direction);
+
+            glm::vec3 front;
+            front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+            front.y = sin(glm::radians(pitch));
+            front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+            transform->rotation = glm::quatLookAt(glm::normalize(front), glm::vec3(0.0f, 1.0f, 0.0f));
+            // compute camera position - selected object position
+            // normalize that
+            // point the camera in that direction.
+        }
 
         if (InputState::is_key_pressed(GLFW_KEY_UP)) {
             camera->field_of_view += 5 * delta_time;
@@ -79,23 +101,15 @@ public:
 
         if (InputState::is_key_just_pressed(GLFW_KEY_1)) {
             camera->clear_flags = CameraComponent::ClearFlags::Skybox;
-            camera->print_camera_component();
-            std::cout << "\n";
         }
         if (InputState::is_key_just_pressed(GLFW_KEY_2)) {
             camera->clear_flags = CameraComponent::ClearFlags::SolidColor;
-            camera->print_camera_component();
-            std::cout << "\n";
         }
         if (InputState::is_key_just_pressed(GLFW_KEY_3)) {
             camera->clear_flags = CameraComponent::ClearFlags::DepthOnly;
-            camera->print_camera_component();
-            std::cout << "\n";
         }
         if (InputState::is_key_just_pressed(GLFW_KEY_4)) {
             camera->clear_flags = CameraComponent::ClearFlags::Nothing;
-            camera->print_camera_component();
-            std::cout << "\n";
         }
 
         glm::vec3 direction = glm::vec3(0.0f);

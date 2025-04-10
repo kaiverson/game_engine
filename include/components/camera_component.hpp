@@ -8,6 +8,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <memory>
+#include <array>
 
 extern EngineConfig config;
 
@@ -110,54 +111,49 @@ public:
         
     }
 
-    void print_camera_component() const {
-        std::cout << "CameraComponent Information:" << std::endl;
-    
-        // Print ClearFlags
-        std::cout << "  Clear Flags: ";
-        switch (clear_flags) {
-            case ClearFlags::Skybox: std::cout << "Skybox"; break;
-            case ClearFlags::SolidColor: std::cout << "SolidColor"; break;
-            case ClearFlags::DepthOnly: std::cout << "DepthOnly"; break;
-            case ClearFlags::Nothing: std::cout << "Nothing"; break;
+    void draw_inspector_ui() override {
+        ImGui::Text("Camera Component");
+
+        const char* clear_flags_items[] = {"Skybox", "SolidColor", "DepthOnly", "Nothing"};
+        int clear_flags_index = static_cast<int>(clear_flags);
+        if (ImGui::Combo("Clear Flags", &clear_flags_index, clear_flags_items, IM_ARRAYSIZE(clear_flags_items))) {
+            clear_flags = static_cast<ClearFlags>(clear_flags_index);
         }
-        std::cout << std::endl;
-    
-        // Print Skybox status
-        // std::cout << "  Skybox: " << (skybox.is_loaded() ? "Loaded" : "Not Loaded") << std::endl;
-    
-        // Print Background color
-        std::cout << "  Background Color: (" 
-                  << background.r << ", " 
-                  << background.g << ", " 
-                  << background.b << ", " 
-                  << background.a << ")" << std::endl;
-    
-        // Print Culling Mask
-        std::cout << "  Culling Mask: " << culling_mask << std::endl;
-    
-        // Print Projection type
-        std::cout << "  Projection: " 
-                  << (projection == Projection::Perspective ? "Perspective" : "Orthographic") 
-                  << std::endl;
-    
-        // Print FOV Axis
-        std::cout << "  FOV Axis: " 
-                  << (fov_axis == FOVAxis::Vertical ? "Vertical" : "Horizontal") 
-                  << std::endl;
-    
-        // Print Field of View
-        std::cout << "  Field of View: " << field_of_view << std::endl;
-    
-        // Print Clipping Planes
-        std::cout << "  Clipping Planes: Near = " << clipping_planes.x 
-                  << ", Far = " << clipping_planes.y << std::endl;
-    
-        // Print Viewport Rect
-        std::cout << "  Viewport Rect: (" 
-                  << viewport_rect.x << ", " 
-                  << viewport_rect.y << ", " 
-                  << viewport_rect.z << ", " 
-                  << viewport_rect.w << ")" << std::endl;
+
+        ImGui::Text("Background Color");
+        float bg_color[4] = { background.r, background.g, background.b, background.a };
+        if (ImGui::ColorEdit4("##Background Color", bg_color)) {
+            background = glm::vec4(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
+        }
+
+        ImGui::Text("Culling Mask");
+        ImGui::InputScalar("Culling Mask", ImGuiDataType_U32, &culling_mask);
+
+        const char* projection_items[] = { "Perspective", "Orthographic" };
+        int projection_index = static_cast<int>(projection);
+        if (ImGui::Combo("Projection", &projection_index, projection_items, IM_ARRAYSIZE(projection_items))) {
+            projection = static_cast<Projection>(projection_index);
+        }
+
+        const char* fov_axis_items[] = { "Vertical", "Horizontal" };
+        int fov_axis_index = static_cast<int>(fov_axis);
+        if (ImGui::Combo("FOV Axis", &fov_axis_index, fov_axis_items, IM_ARRAYSIZE(fov_axis_items))) {
+            projection = static_cast<Projection>(projection_index);
+        }
+
+        ImGui::Text("Field of View");
+        ImGui::DragFloat("##Field of View", &field_of_view, 0.1f, 1.0f, 180.0f);
+
+        ImGui::Text("Clipping Planes");
+        float clipping_planes_array[2] = { clipping_planes.x, clipping_planes.y };
+        if (ImGui::DragFloat2("##Clipping Planes", clipping_planes_array, 0.1f, 0.01f, 1000.0f)) {
+            clipping_planes = glm::vec2(clipping_planes_array[0], clipping_planes_array[1]);
+        }
+
+        ImGui::Text("Viewport Rect");
+        float viewport_rect_array[4] = { viewport_rect.x, viewport_rect.y, viewport_rect.z, viewport_rect.w };
+        if (ImGui::DragFloat4("##Viewport Rect", viewport_rect_array, 0.01f, 0.0f, 1.0f)) {
+            viewport_rect = glm::vec4(viewport_rect_array[0], viewport_rect_array[1], viewport_rect_array[2], viewport_rect_array[3]);
+        }
     }
 };

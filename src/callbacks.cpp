@@ -20,14 +20,6 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     InputState::update_key_state(window, key, scancode, action, modes);
     
     extern bool wireframe_mode;
-    extern bool normals_mode;
-    extern bool debug_mode;
-    extern bool move_forward;
-    extern bool move_backward;
-    extern bool move_left;
-    extern bool move_right;
-    extern bool move_up;
-    extern bool move_down;
 
     // WIREFRAME MODE
     if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
@@ -45,17 +37,17 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     //     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     // }
 
-    if (key == GLFW_KEY_F3) {
-        if (action == GLFW_PRESS) {
-            debug_mode = !debug_mode;
-        } 
-    }
+    // if (key == GLFW_KEY_F3) {
+    //     if (action == GLFW_PRESS) {
+    //         debug_mode = !debug_mode;
+    //     } 
+    // }
 
-    if (key == GLFW_KEY_N) {
-        if (action == GLFW_PRESS) {
-            normals_mode = !normals_mode;
-        }
-    }
+    // if (key == GLFW_KEY_N) {
+    //     if (action == GLFW_PRESS) {
+    //         normals_mode = !normals_mode;
+    //     }
+    // }
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {

@@ -13,8 +13,12 @@
 #include <memory>
 #include <string>
 
+#include "bounding_box.hpp"
+
 class Mesh {
 private:
+    std::string name = "DEFAULT MESH NAME";
+
     struct Vertex {
         glm::vec3 position;
         glm::vec3 normal;
@@ -40,16 +44,17 @@ private:
 
 public:
     Mesh();
+    std::string get_name();
     void set_vertices(const std::vector<Vertex> &vertices);
     void set_indices(const std::vector<GLuint> &indices);
     bool add_submesh(GLuint index_offset, GLuint index_count);
+    BoundingBox get_bounding_box();
     void upload_to_GPU();
     bool bind() const;
     bool draw_submesh(size_t submesh_index) const;
     size_t get_submesh_count() const { return submeshes.size(); }
     ~Mesh();
 
-    // Supports .obj and .fbx fils
     bool load(const std::string &path);
 };
 

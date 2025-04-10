@@ -36,7 +36,7 @@ public:
                 material->set_shader(shader);
                 material->set_uniform("material.base_map", base_map_texture);
                 // material->set_uniform("material.metallic_map", metallic_map_texture);
-                material->set_uniform("material.base_color", glm::vec3(1.0, 0, 1.0));
+                // material->set_uniform("material.base_color", glm::vec3(1.0, 0, 1.0));
                 // material->set_uniform("material.normal_map", normal_map_texture);
                 material->set_uniform("material.smoothness", smoothness);
                 break;

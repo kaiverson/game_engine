@@ -5,7 +5,6 @@
 #include <algorithm>
 #include "game_object.hpp"
 #include "game_object_builder.hpp"
-#include "render.hpp"
 #include "components/camera_component.hpp"
 
 class Scene {

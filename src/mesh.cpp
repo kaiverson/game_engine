@@ -2,6 +2,10 @@
 
 Mesh::Mesh() {}
 
+std::string Mesh::get_name() {
+    return name;
+}
+
 void Mesh::set_vertices(const std::vector<Vertex> &vertices) {
     this->vertices = vertices;
     is_uploaded = false; 
@@ -19,6 +23,15 @@ bool Mesh::add_submesh(GLuint index_offset, GLuint index_count) {
 
     submeshes.push_back({index_offset, index_count});
     return true;
+}
+
+BoundingBox Mesh::get_bounding_box() {
+    BoundingBox bounding_box;
+    for (auto& vertex : vertices) {
+        bounding_box.grow_to_include(vertex.position);
+    }
+
+    return bounding_box;
 }
 
 void Mesh::upload_to_GPU() {

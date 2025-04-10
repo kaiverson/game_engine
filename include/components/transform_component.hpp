@@ -55,6 +55,36 @@ public:
         std::cout << "Rotation = {" << rotation.x << " " << rotation.y << " " << rotation.z << " " << rotation.w << "}\n";
         std::cout << "\n";      
     }
+
+    void draw_inspector_ui() override {
+        ImGui::Text("Transform");
+
+        // Position
+        float pos[3] = { position.x, position.y, position.z };
+        if (ImGui::DragFloat3("Position", pos, 0.1f)) {
+            position = glm::vec3(pos[0], pos[1], pos[2]);
+        }
+
+        // Rotation
+        static float rot[3] = {
+            glm::degrees(rotation.x),
+            glm::degrees(rotation.y),
+            glm::degrees(rotation.z)
+        };
+        if (ImGui::DragFloat3("Rotation", rot, 1.0f, -180.0f, 180.0f)) {
+            rotation = glm::vec3(
+                glm::radians(rot[0]),
+                glm::radians(rot[1]),
+                glm::radians(rot[2])
+            );
+        }
+
+        // Scale
+        float scl[3] = { scale.x, scale.y, scale.z };
+        if (ImGui::DragFloat3("Scale", scl, 0.1f, 0.01f, 100.0f)) {
+            scale = glm::vec3(scl[0], scl[1], scl[2]);
+        }
+    }
 };
 
 #endif // TRANSFORM_COMPONENT_HPP

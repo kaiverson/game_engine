@@ -16,7 +16,7 @@ include_directories(
 )
 
 # Add the vcpkg toolchain file
-set(CMAKE_TOOLCHAIN_FILE "C:/Users/user/Desktop/Code/c/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+set(CMAKE_TOOLCHAIN_FILE "C:/Users/user/Desktop/Code/C/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 
 # Find the libraries using vcpkg
 find_package(assimp CONFIG REQUIRED)

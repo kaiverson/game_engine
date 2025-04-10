@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <imgui.h>
 
 #include <iostream>
 #include <memory>
@@ -51,7 +52,7 @@ public:
     bool set_uniform(const std::string &name, glm::mat4 value);
     bool set_uniform(const std::string &name, std::shared_ptr<Texture> texture);
 
-    void list_all_uniforms();
+    void print_all_uniforms();
     void check_uniforms();
 
     void set_blend_mode(BlendMode mode);
@@ -59,6 +60,8 @@ public:
     void set_depth_write(bool enable);
     void set_cull_mode(CullMode mode);
     void apply();
+
+    void draw_uniforms_gui(); 
 };
 
 #endif // MATERIAL_HPP

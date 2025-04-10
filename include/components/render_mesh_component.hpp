@@ -21,6 +21,11 @@ private:
 public:
     explicit RenderMeshComponent(std::shared_ptr<Mesh> mesh) {
         set_mesh(mesh);
+
+        BoundingBox bb = mesh->get_bounding_box();
+        glm::vec3 c = bb.get_center();
+
+        std::cout << "Render Mesh Component: " << c.x << " " << c.y << " " << c.z << "\n";
     }
 
     void set_mesh(std::shared_ptr<Mesh> mesh) {
@@ -43,12 +48,12 @@ public:
 
         glm::mat4 current_transform = transform_component->get_transform();
             
-        if (current_transform != cached_transform) {
+        // if (current_transform != cached_transform) {
             for (auto &material : materials) {
                 if (material) material->set_uniform("transform", current_transform);
             }
-            cached_transform = current_transform;
-        }
+            // cached_transform = current_transform;
+        // }
 
         for (auto &material : materials) {
             material->set_uniform("projection", projection);
@@ -79,6 +84,29 @@ public:
         transform_component = game_object.get_component<TransformComponent>();
 
         assert(transform_component && "GameObject lacks TransformComponent");
+    }
+
+    void draw_inspector_ui() override {
+        ImGui::Text("Render Mesh");
+
+        if (mesh) {
+            ImGui::Text("Mesh: %s", mesh->get_name().c_str());
+        } else {
+            ImGui::Text("Mesh: None");
+        }
+
+        size_t i = 0;
+        for (const auto& material : materials) {
+            if (material) {
+                ImGui::Separator();
+                ImGui::Text("Material %zu", i);
+
+                material->draw_uniforms_gui();
+            } else {
+                ImGui::Text("Material %zu: None", i);
+            }
+            i++;
+        }
     }
 };
 

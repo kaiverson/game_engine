@@ -8,7 +8,7 @@ in vec3 Tangent;
 in vec3 Bitangent;
 
 struct Material {
-    vec3 base_color = vec3(1.0, 0.0, 1.0);
+    vec3 base_color;
 };
 
 struct Light {

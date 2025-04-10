@@ -6,6 +6,8 @@
 #include <iostream>
 #include <typeinfo>
 
+#include <imgui.h>
+
 #include "structs.hpp"
 #include "components/component.hpp"
 #include "components/transform_component.hpp"
@@ -50,6 +52,13 @@ class GameObject {
     void update(const float delta_time) {
         for (auto &component : components) {
             component->update(*this, delta_time);
+        }
+    }
+
+    void draw_inspector_ui() {
+        for (const auto& component : components) {
+            component->draw_inspector_ui();
+            ImGui::Separator();
         }
     }
 };
